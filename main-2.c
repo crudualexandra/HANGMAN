@@ -1,148 +1,231 @@
-
 #include "raylib.h"
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
+#include <stdlib.h>
 
-#define MAX_WORD_LENGTH 30
-void clearScreen() {
-    for (int i = 0; i < 100; i++) {  // Print 100 new lines
-        printf("\n");
+#define MAX_GUESSES 3
+#define MAX_INPUT_CHARS 9
+
+void DrawHangman(int lives) {
+    // Draw the hangman based on the number of lives remaining
+    // Adjust the positions and sizes as needed
+    
+    // Hangman stand
+    DrawLineEx((Vector2){150, 350},(Vector2){ 250, 350},5.0, DARKBROWN); // Base
+    DrawLineEx((Vector2){200, 350}, (Vector2){200, 150},5.0, DARKBROWN); // Stand
+    DrawLineEx((Vector2){200, 150},(Vector2) {300, 150},5.0, DARKBROWN); // Top
+    DrawLineEx((Vector2){300, 150}, (Vector2){300, 200},5.0, BROWN); // Noose
+    Color pastelPink = {255, 182, 193, 255};
+    
+    // Hangman body parts
+    if (lives <= 2) DrawCircle(300, 220, 20, BEIGE); // Head
+    
+    if (lives <= 1) DrawTriangle((Vector2){ 300, 240 },
+                                 (Vector2){ 280, 300 },
+                                 (Vector2){ 320, 300 }, pastelPink); // Body
+    if (lives == 0) {
+        DrawLine(300, 250, 270, 280, BEIGE); // Left arm
+        DrawLine(300, 250, 330, 280, BEIGE); // Right arm
+        DrawLine(300, 300, 270, 330, BEIGE); // Left leg
+        DrawLine(300, 300, 330, 330, BEIGE); // Right leg
     }
 }
-int main() {
-    
-    int screenWidth = 600;
-    int screenHeight = 450;
-    InitWindow(screenWidth, screenHeight, "Hangman Game");
 
-    char secretWord[MAX_WORD_LENGTH] = {0};
-    char displayWord[MAX_WORD_LENGTH] = {0};
-    int letterCount = 0;
-    int incorrectGuesses = 0;
-    bool gameWon = false;
-    char player1[MAX_WORD_LENGTH] = {0};
-    char player2[MAX_WORD_LENGTH] = {0};
+int main() {
+    // Initialization
+    const int screenWidth = 800;
+    const int screenHeight = 450;
     
+    InitWindow(screenWidth, screenHeight, "Hangman Game - Raylib");
+    
+    char *words[] = {"SALUT", "CODING", "CHRISTMAS", "HALLOWEEN"};
+    char *selectedWord = NULL;
+    int numberOfWords = sizeof(words) / sizeof(words[0]);
+    srand(time(NULL));
+    
+    char guessedWord[MAX_INPUT_CHARS + 1] = "\0"; // Guessed word for single player
+    char multiplayerWord[MAX_INPUT_CHARS + 1] = "\0"; // Word for multiplayer mode
+    char inputWord[MAX_INPUT_CHARS + 1] = "\0"; // Buffer for input word in multiplayer
+    int lives = MAX_GUESSES;
+    bool gameOver = false;
+    bool win = false;
+    bool wordSet = false; // Flag to check if word is set in multiplayer mode
+    int letterCount = 0; // Count of letters entered in multiplayer mode
+    
+    int gameState = 0; // 0 for menu, 1 for single player, 2 for multiplayer
+    Rectangle singlePlayerBtn = { 320, 220, 150, 50 };
+    Rectangle multiPlayerBtn = { 320, 280, 150, 50 };
     
     SetTargetFPS(60);
-
-    printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nWelcome to the Hangman game!\n\n\n\n\n");
-    printf("Player 1 please enter your name: \n\n\n");
     
-    scanf("%s",player1);
-    printf("Player 2 please enter your name: \n\n\n");
-    scanf("%s",player2);
-    printf("%s, please enter the secret word: ", player1);
-    scanf("%s", secretWord);
-    letterCount = strlen(secretWord);
-
-    for (int i = 0; i < letterCount; i++) {
-        displayWord[i] = '_';
-    }
-    displayWord[letterCount] = '\0';
-   
-    clearScreen();
-    printf("%s, remember you have only three chances!",player2);
-    while (!WindowShouldClose() && !gameWon && incorrectGuesses < 3) {
-        
-
-        printf("\n %s, guess a letter: \n",player2);
-        char guess;
-        scanf(" %c", &guess);
-       
-        bool found = false;
-        for (int i = 0; i < letterCount; i++) {
-            if (secretWord[i] == guess || secretWord[i] == (guess + ('a' - 'A')) || secretWord[i] == (guess - ('a' - 'A'))) {
-                displayWord[i] = secretWord[i];
-                found = true;
-            }
-        }
-
-        if (!found) {
-            incorrectGuesses++;
-            int remaining=3-incorrectGuesses;
-            printf("%s, Fail!!! You have %d chances remaining",player2,remaining );
-        } else {
-            printf("%s, Correct guess!\n",player2);
-            if (strcmp(displayWord, secretWord) == 0) {
-                gameWon = true;
-            }
-        }
-
+    // Main game loop
+    while (!WindowShouldClose()) {
         BeginDrawing();
         ClearBackground(RAYWHITE);
-        DrawText(displayWord, 50, 100, 40, BLACK);
-
-        if (incorrectGuesses >= 3) { int screenWidth = 600;
-            int screenHeight = 450;
-
-            InitWindow(screenWidth, screenHeight, "  Hangman ");
-
-            SetTargetFPS(60);
-
-          
-            while (!WindowShouldClose()) {
-            DrawText("YOU FAILED- LOOSER!", 190, 300, 20, RED);
+        
+        if (gameState == 0) {
+            // Main menu
+            DrawText("Main Menu", 340, 180, 20, LIGHTGRAY);
             
+            // Single Player Button
+            if (CheckCollisionPointRec(GetMousePosition(), singlePlayerBtn) && IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
+                gameState = 1;
+                selectedWord = words[rand() % numberOfWords];
+                strcpy(guessedWord, selectedWord);
+                for (int i = 0; i < strlen(guessedWord); i++) {
+                    guessedWord[i] = '_';
+                }
+                guessedWord[strlen(guessedWord)] = '\0'; // Null-terminate the guessed word
+                lives = MAX_GUESSES;
+                gameOver = false;
+                win = false;
+            }
             
-                                  
-
-                                   DrawLineEx((Vector2){150, 100}, (Vector2){150, 350}, 5.0, RED);
-                                   DrawLineEx((Vector2){150,100}, (Vector2){450,100}, 5.0, RED);
-                                       
-                                   DrawLineEx((Vector2){300,100}, (Vector2){300,150}, 3.0, BROWN);// small vertical line
-
-                                       // Draw hangman
-                                       // Head
-                                       DrawCircle(300, 170, 20, BEIGE);
-
-                                       // Body
-                                   DrawLineEx((Vector2){300, 190},(Vector2){ 300, 200},5.0, BROWN);
-                                   Color pastelPink = {255, 182, 193, 255};
-                                   // Triangle Body
-                                   Vector2 bodyTop = (Vector2){300, 190}; // Top of the body (neck position)
-                                   Vector2 bodyLeft = (Vector2){280, 250}; // Bottom-left of the body
-                                   Vector2 bodyRight = (Vector2){320, 250}; // Bottom-right of the body
-                                   DrawTriangle(bodyTop, bodyLeft, bodyRight, pastelPink);
-                                       // Arms
-                                   DrawLineEx((Vector2){300, 200},(Vector2){ 270, 230},2.0, BEIGE);
-                                   DrawLineEx((Vector2){300, 200},(Vector2){ 330, 230},2.0, BEIGE);
-
-                                       // Legs
-                                   DrawLineEx((Vector2){300, 190},(Vector2){ 300, 200},5.0, BROWN);
-                                   DrawLineEx((Vector2){295, 250},(Vector2){ 295, 280},2.0, BEIGE);
-                                   DrawLineEx((Vector2){305, 250}, (Vector2){305, 280},2.0, BEIGE);
-                EndDrawing();
-                                      
-                                  }
-
-                                
-                                  CloseWindow();
-
-                                
-
-                                   
-        } else if (gameWon) {
-            int screenWidth = 500;
-            int screenHeight = 600;
-
-                InitWindow(screenWidth, screenHeight, "  Hangman ");
-
-                SetTargetFPS(60);
-
+            // Multiplayer Button
+            if (CheckCollisionPointRec(GetMousePosition(), multiPlayerBtn) && IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
+                gameState = 2;
+                memset(inputWord, 0, MAX_INPUT_CHARS + 1);
+                memset(multiplayerWord, 0, MAX_INPUT_CHARS + 1);
+                memset(guessedWord, 0, MAX_INPUT_CHARS + 1);
+                wordSet = false;
+                letterCount = 0;
+                lives = MAX_GUESSES;
+                gameOver = false;
+                win = false;
+            }
+            
+            // Drawing the buttons
+            DrawRectangleRec(singlePlayerBtn, LIGHTGRAY);
+            DrawRectangleRec(multiPlayerBtn, LIGHTGRAY);
+            DrawText("Single Player", singlePlayerBtn.x + 10, singlePlayerBtn.y + 15, 20, BLACK);
+            DrawText("Multiplayer", multiPlayerBtn.x + 10, multiPlayerBtn.y + 15, 20, BLACK);
+        }
+        else if (gameState == 1) {
+            // Single Player game logic
+            if (!gameOver) {
+                int key = GetKeyPressed();
                 
-                while (!WindowShouldClose()) {
-                DrawText("YOU WON!", 120, 190, 50, RED);
-                    DrawText("The word you guessed is:", 50, 250, 30, RED);
-                    DrawText(displayWord, 120, 310, 40, RED);
+                // Convert lowercase input to uppercase
+                if (key >= 'a' && key <= 'z') {
+                    key -= ('a' - 'A'); // Convert to uppercase
+                }
                 
-                    EndDrawing();
-                                         
-                                      }
-
-                                      
-                                      CloseWindow();
-
-        }}
+                // Check if the key is an uppercase letter
+                if (key >= 'A' && key <= 'Z') {
+                    bool found = false;
+                    for (int i = 0; i < strlen(selectedWord); i++) {
+                        // Convert character in word to uppercase for comparison
+                        char wordChar = selectedWord[i];
+                        if (wordChar >= 'a' && wordChar <= 'z') {
+                            wordChar -= ('a' - 'A'); // Convert to uppercase
+                        }
+                        
+                        if (wordChar == (char)key && guessedWord[i] == '_') {
+                            guessedWord[i] = selectedWord[i]; // Update the guessed word with the original case
+                            found = true;
+                        }
+                    }
+                    
+                    if (!found) {
+                        lives--;
+                    }
+                    
+                    // Check for win or lose
+                    if (strcmp(guessedWord, selectedWord) == 0) { // Compare guessed word with the selected word
+                        win = true;
+                        gameOver = true;
+                    } else if (lives <= 0) {
+                        gameOver = true;
+                    }
+                }
+            }
+            
+            // Draw the game state
+            DrawText(guessedWord, 400, 200, 20, BLACK);
+            DrawHangman(lives);
+            if (gameOver) {
+                if (win) {
+                    DrawText("You Win!", 350, 250, 20, GREEN);
+                } else {
+                    DrawText("Game Over!", 350, 250, 20, RED);
+                    DrawText(selectedWord, 350, 300, 20, BLACK); // Reveal the word
+                }
+            }
+        }
+        
+        else if (gameState == 2) {
+            if (!wordSet) {
+                // Allow the first player to set the word
+                DrawText("Enter a word: ", 300, 200, 20, LIGHTGRAY);
+                DrawText(inputWord, 430, 200, 20, MAROON);
+                
+                int key = GetCharPressed();
+                while (key > 0) {
+                    if ((key >= 'A' && key <= 'Z') && (letterCount < MAX_INPUT_CHARS)) {
+                        inputWord[letterCount] = (char)key;
+                        inputWord[letterCount + 1] = '\0';
+                        letterCount++;
+                    }
+                    key = GetCharPressed();
+                }
+                
+                if (IsKeyPressed(KEY_ENTER) && letterCount > 0) {
+                    wordSet = true;
+                    strcpy(multiplayerWord, inputWord);
+                    for (int i = 0; i < strlen(multiplayerWord); i++) {
+                        guessedWord[i] = '_';
+                    }
+                    guessedWord[strlen(multiplayerWord)] = '\0';
+                }
+            } else {
+                // Second player guesses the word
+                if (!gameOver) {
+                    // Handling key inputs for guessing the word
+                    int key = GetKeyPressed();
+                    if (key >= 'A' && key <= 'Z') {
+                        bool found = false;
+                        for (int i = 0; i < strlen(multiplayerWord); i++) {
+                            if (multiplayerWord[i] == (char)key && guessedWord[i] == '_') {
+                                guessedWord[i] = (char)key;
+                                found = true;
+                            }
+                        }
+                        if (!found) {
+                            lives--;
+                            if (lives <= 0) {
+                                gameOver = true;
+                            }
+                        }
+                    }
+                    
+                    // Check for win condition
+                    if (strcmp(guessedWord, multiplayerWord) == 0) {
+                        win = true;
+                        gameOver = true;
+                    }
+                }
+                
+                // Drawing the guessed word and hangman
+                DrawText(guessedWord, 400 - MeasureText(guessedWord, 20) / 2, 200, 20, BLACK);
+                DrawHangman(lives);
+                
+                // Display win or lose message
+                if (gameOver) {
+                    if (win) {
+                        DrawText("You Win!", 350, 250, 20, GREEN);
+                    } else {
+                        DrawText("Game Over!", 350, 250, 20, RED);
+                        DrawText(multiplayerWord, 350 - MeasureText(multiplayerWord, 20) / 2, 300, 20, BLACK); // Reveal the word
+                    }
+                }
+            }
+            
+        }
+        
+        EndDrawing();
+    }
+    
+    CloseWindow();
     return 0;
 }
